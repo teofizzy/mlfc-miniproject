@@ -55,6 +55,11 @@ import pandas as pd
 import logging
 import osmnx as ox
 import matplotlib.pyplot as plt
+import os
+import numpy as np
+import xarray as xr
+import cdsapi
+
 
 # Set up basic logging
 logging.basicConfig(
@@ -148,3 +153,99 @@ def get_osm_datapoints(latitude, longitude, use_km=True, box_size_km=2):
     # Get bounding box
     bbox = (west, south, east, north)
     return bbox
+
+def download_monthly_data(client, year:list[str],time:list[str], month:list[str],
+                          area:list[float], dataset:str, variable:str,
+                          product_type:str, destination_dir:str, filename:str):
+    """
+    Download monthly data from the CDS API.
+    """
+    # ensure destination_directory
+    os.makedirs(destination_dir, exist_ok=True)
+    file_path = os.path.join(destination_dir, filename)
+
+    # Check if the file already exists
+    if not os.path.exists(file_path):
+        try:
+            # Retrieve data
+            client.retrieve(
+                dataset,
+                {
+                    'product_type': f'{product_type}',
+                    'variable': f'{variable}',
+                    'year': year,
+                    'month': month,
+                    'time': time,
+                    'area': area,
+                    'data_format': 'netcdf',
+                },
+            os.path.join(destination_dir, filename)
+            )
+        except Exception as e:
+            print(f"Error downloading data: {e}")
+
+    else:
+        print(f"File {file_path} already exists. Skipping download.")
+
+def subset_region(ds, region_bbox:list, latitude_var_name, longitude_var_name):
+    """
+    Subset a dataset to a specific region defined by a bounding box.
+    The distance between box height and box width should be at least 0.25 degrees
+    due to the spatial resolution of the dataset
+
+    region_bbox: max_lat, min_lon, min_lat, max_lon [north, west, south, east]
+    """
+    ds_sliced = ds.sel(
+        **{latitude_var_name: slice(region_bbox[0], region_bbox[2]),
+           longitude_var_name: slice(region_bbox[1], region_bbox[3])}
+    )
+
+    return ds_sliced
+
+def download_monthly_data(client, year:list[str],time:list[str], month:list[str],
+                          area:list[float], dataset:str, variable:str,
+                          product_type:str, destination_dir:str, filename:str):
+    """
+    Download monthly data from the CDS API.
+    """
+    # ensure destination_directory
+    os.makedirs(destination_dir, exist_ok=True)
+    file_path = os.path.join(destination_dir, filename)
+
+    # Check if the file already exists
+    if not os.path.exists(file_path):
+        try:
+            # Retrieve data
+            client.retrieve(
+                dataset,
+                {
+                    'product_type': f'{product_type}',
+                    'variable': f'{variable}',
+                    'year': year,
+                    'month': month,
+                    'time': time,
+                    'area': area,
+                    'data_format': 'netcdf',
+                },
+            os.path.join(destination_dir, filename)
+            )
+        except Exception as e:
+            print(f"Error downloading data: {e}")
+
+    else:
+        print(f"File {file_path} already exists. Skipping download.")
+
+def subset_region(ds, region_bbox:list, latitude_var_name, longitude_var_name):
+    """
+    Subset a dataset to a specific region defined by a bounding box.
+    The distance between box height and box width should be at least 0.25 degrees
+    due to the spatial resolution of the dataset
+
+    region_bbox: max_lat, min_lon, min_lat, max_lon [north, west, south, east]
+    """
+    ds_sliced = ds.sel(
+        **{latitude_var_name: slice(region_bbox[0], region_bbox[2]),
+           longitude_var_name: slice(region_bbox[1], region_bbox[3])}
+    )
+
+    return ds_sliced

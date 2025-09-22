@@ -7,6 +7,11 @@ from . import access
 import osmnx as ox
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+import os
+import numpy as np
+from scipy.stats import linregress
+import xarray as xr
+
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -264,3 +269,174 @@ def plot_city_map(city, country, latitude=None, longitude=None, box_size=2, plot
     ax.set_ylim(bbox[1], bbox[3])
     ax.set_title(place_name, fontsize=14)
     plt.show()
+
+def plot_trend_map(trend, title, cmap="coolwarm"):
+    """Quick map of linear trend over Africa."""
+    plt.figure(figsize=(8,6))
+    trend.plot(cmap=cmap)
+    plt.title(title)
+    plt.show()
+
+def plot_region_timeseries(da, title, label):
+    """Plot regional mean timeseries."""
+    weighted_da = get_latitude_weights(da)
+    ts = weighted_da.mean(["latitude", "longitude"])
+    ts.plot.line(label=label)
+    plt.title(f"{label} region timeseries")
+    plt.xlabel("Time")
+    plt.ylabel(f"{da.attrs['long_name']} ({da.attrs['units']})")
+    plt.legend()
+    plt.show()
+
+def plot_decadal_boxplot(da, varname):
+    """Boxplot of decadal variability for a region."""
+    weighted_da = get_latitude_weights(da)
+    ts = weighted_da.mean(["latitude", "longitude"])
+    df = ts.to_dataframe().reset_index()
+    df["decade"] = (df["time"].dt.year // 10) * 10
+    df.boxplot(column=varname, by="decade", figsize=(8,6))
+    plt.title(f"{varname} by decade")
+    plt.ylabel(f"{da.attrs['long_name']} ({da.attrs['units']})")
+    plt.suptitle("")
+    plt.show()
+
+def plot_climatology(mean, std, region):
+    """
+    Plot monthly climatology
+    """
+    fig, ax = plt.subplots(1, 1, figsize = (12, 6))
+
+    ax.plot(mean.month, mean, color='blue', label='mean')
+    ax.fill_between(mean.month, (mean + std), (mean - std), alpha=0.1, color='green', label='+/- 1 SD')
+    ax.set_title(f'{region} monthly climatology of 2m temperature')
+    ax.set_ylabel('° C')
+    ax.set_xlabel('month')
+    ax.set_xlim(1,12)
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles, labels)
+
+def get_latitude_weights(da):
+    """
+    Compute the cosine of latitude weights.
+    """
+    weights = np.cos(np.deg2rad(da.latitude))
+    weights.name = "weights"
+    da_weighted = da.weighted(weights)
+    return da_weighted
+
+def compute_anomalies(da, baseline=(1991, 2020)):
+    """Compute anomalies relative to baseline climatology."""
+    baseline_ds = da.sel(time=slice(f"{baseline[0]}-01-01", f"{baseline[1]}-12-31"))
+    clim = baseline_ds.groupby("time.month").mean("time")
+    anomalies = da.groupby("time.month") - clim
+    return anomalies
+
+def monthly_climatology(da, start_date:str, end_date:str,):
+    """
+    Compute monthly climatology.
+    """
+    clim_period = da.sel(time=slice(start_date, end_date))
+    clim_mean = clim_period.groupby('time.month').mean()
+    clim_std = clim_period.groupby('time.month').std()
+
+    clim_mean_weighted = get_latitude_weights(clim_mean)
+    clim_std_weighted = get_latitude_weights(clim_std)
+    mean = clim_mean_weighted.mean(dim=['latitude', 'longitude'])
+    std = clim_std_weighted.mean(dim=['latitude', 'longitude'])
+
+    return mean, std
+
+def compute_linear_trend(da, dim="time"):
+    """
+    Compute linear trend (slope per year) at each grid cell.
+    """
+    # Convert time to numeric (e.g. years since start)
+    time_num = xr.DataArray(
+        np.arange(len(da[dim])),
+        dims=dim,
+        coords={dim: da[dim]}
+    )
+
+    def _polyfit(y, x):
+        mask = np.isfinite(y)
+        if mask.sum() < 2:
+            return np.nan
+        slope, intercept = np.polyfit(x[mask], y[mask], 1)
+        return slope
+
+    slope = xr.apply_ufunc(
+        _polyfit, da, time_num,
+        input_core_dims=[[dim], [dim]],
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=[float]
+    )
+
+    return slope
+
+def get_int(year, month, first_year=1979):
+    """
+    Given a year and month, return the corresponding integer value.
+    """
+    if year < first_year:
+        raise ValueError(f"Year must be greater than or equal to {first_year}")
+    if month < 1 or month > 12:
+        raise ValueError("Month must be between 1 and 12")
+
+    return (year - first_year) * 12 + month - 1
+
+def plot_da(da, year:int, month:int, label:str):
+    da[get_int(year, month), :, :].plot()
+    plt.suptitle(f"{da.attrs['long_name']} for {label}")
+    plt.show()
+
+def compute_regional_mean(da):
+    # Average over space
+    weighted_da = get_latitude_weights(da)
+
+    # Make regional da 1D: Averaging over space
+    region_mean = weighted_da.mean(dim=["latitude", "longitude"])
+
+    return region_mean
+
+def plot_region_timeseries(da, label):
+    # Fit linear regression
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.stats import linregress
+
+    da.plot(label=label)
+    time_num = np.arange(len(da["time"]))
+    slope, intercept, r, p, se = linregress(time_num, da.values)
+
+    plt.plot(da["time"], intercept + slope*time_num, "r--", label="Linear Trend")
+    plt.title(f"{label} region mean timeseries")
+    plt.xlabel("Time")
+    # plt.ylabel(f"{da.attrs['long_name']} ({da.attrs['units']})")
+    plt.legend()
+    plt.show()
+
+def summarize_region(da, name, baseline=(1991, 2020)):
+    reg_mean = compute_regional_mean(da)  # 1D time series
+
+    # Linear trend (per decade)
+    time_num = np.arange(len(reg_mean["time"])) / 12  # in years
+    slope, intercept, r, p, se = linregress(time_num, reg_mean.values)
+    slope_decade = slope * 10  # °C per decade
+
+    # Mean and variability
+    mean_val = float(reg_mean.mean().values)
+    std_val = float(reg_mean.std().values)
+
+    # Anomalies relative to baseline
+    anomalies = compute_anomalies(da, baseline=baseline)
+    anomalies_mean = compute_regional_mean(anomalies)
+    recent_anom = anomalies_mean.sel(time=slice("2014-01-01", "2023-12-31")).mean().values
+
+    return {
+        "Region": name,
+        "Trend (°C/decade)": slope_decade,
+        "Mean (°C)": mean_val,
+        "StdDev (°C)": std_val,
+        "Recent anomaly vs 1991–2020 (°C)": recent_anom
+    }
