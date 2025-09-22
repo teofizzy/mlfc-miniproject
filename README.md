@@ -57,7 +57,7 @@ Sahara
 - Southern Africa warms more slowly, though still significant.
 
 - The last decade (2014–2023) is 0.3–0.6 °C warmer than the 1991–2020 baseline.
-- 
+
 ### Fynesse template
 This miniproject uses the fynesse structure.
 The Fynesse paradigm considers three aspects to data analysis, Access, Assess, Address.
