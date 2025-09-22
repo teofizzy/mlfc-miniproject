@@ -1,113 +1,65 @@
-# Fynesse Template
 
-[![Tests](https://github.com/lawrennd/fynesse_template/workflows/Test/badge.svg)](https://github.com/lawrennd/fynesse_template/actions/workflows/test.yml)
-[![Code Quality](https://github.com/lawrennd/fynesse_template/workflows/Code%20Quality/badge.svg)](https://github.com/lawrennd/fynesse_template/actions/workflows/code-quality.yml)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Poetry](https://img.shields.io/badge/poetry-1.0+-blue.svg)](https://python-poetry.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# Regional Climate Warming in Africa – Mini Project
+## 📌 Overview
 
-This is a *GitHub template repository* for data analysis projects using the Fynesse framework. The template uses Poetry for dependency management, pytest for testing, and follows current Python development best practices.
+This project analyzes temperature trends across major African regions using monthly climate data (1979–2024). The goal is to identify which regions are warming fastest, quantify variability, and assess recent anomalies relative to a standard baseline (1991–2020).
 
-## What is a GitHub Template?
+The results highlight regional disparities in warming rates, offering insights for climate science and adaptation planning.
 
-A GitHub template repository allows you to quickly create new repositories with the same structure and files. When you use this template, you'll get a complete project setup with:
+## 🌍 Regions Analyzed
 
-- Modern Python development environment (Poetry)
-- Comprehensive testing framework (pytest)
-- Code quality tools (black, mypy, flake8)
-- Fynesse framework structure ready for implementation
-- Documentation and examples
+Bounding boxes were used to extract data for the following representative regions:
 
-## How to Use This Template
+Sahel
 
-### Option 1: Use the "Use this template" Button (Recommended)
+East Africa
 
-1. *Click the green "Use this template" button* at the top of this repository
-2. *Choose "Create a new repository"*
-3. *Name your new repository* (e.g., "my-data-analysis-project")
-4. *Select visibility* (public or private)
-5. *Click "Create repository from template"*
+Central Africa
 
-Your new repository will be created with all the template files, and you can start working immediately!
+Congo Basin
 
-### Option 2: Clone and Customize
+Southern Africa
 
-```bash
-# Clone the template
-git clone https://github.com/lawrennd/fynesse_template.git my-project-name
-cd my-project-name
+Sahara
 
-# Remove the template's git history and start fresh
-rm -rf .git
-git init
+## 📊 Methods
 
-# Add your new remote repository
-git remote add origin https://github.com/yourusername/my-project-name.git
-```
+### Data Input:
 
-## Quick Start (After Using Template)
+- Monthly mean 2-meter temperature (1979–2024).
 
-### Prerequisites
-- Python 3.9 or higher
-- Poetry (install via `curl -sSL https://install.python-poetry.org | python3 -`)
+- Baseline period: 1991–2020.
 
-### Installation
-```bash
-# After creating your repository from the template:
-cd your-new-project-name
+- Regional Summaries: For each region, the following metrics were computed:
 
-# Install dependencies with Poetry
-poetry install
+- Trend (°C/decade) – Linear regression over time.
 
-# Activate the virtual environment
-poetry shell
+- Mean Temperature (°C) – Long-term mean.
 
-# Run tests to verify installation
-poetry run pytest
-```
+- Variability (StdDev °C) – Interannual standard deviation.
 
-### Development Workflow
-```bash
-# Install development dependencies
-poetry install --with dev
+- Recent Anomaly (°C) – Mean anomaly (2014–2023) relative to 1991–2020.
 
-# Run tests
-poetry run pytest
+## 🛠️ Key Functions
 
-# Format code
-poetry run black fynesse/
+`compute_regional_mean(da)` → extracts spatial mean for a region.
 
-# Type checking
-poetry run mypy fynesse/
+`compute_anomalies(da, baseline)` → calculates anomalies relative to baseline.
 
-# Linting
-poetry run flake8 fynesse/
-```
+`summarize_region(da, name)` → returns summary stats (trend, mean, std, anomaly).
 
-### Next Steps After Setup
+## 🔑 Findings
 
-1. *Update project metadata* in `pyproject.toml`:
-   - Change the project name and description
-   - Update author information
-   - Modify the repository URLs
+- All regions show warming since 1979, with trends ranging 0.2–0.4 °C/decade.
 
-2. *Customize the framework*:
-   - Implement your data access logic in `fynesse/access.py`
-   - Add data assessment functions in `fynesse/assess.py`
-   - Create analysis functions in `fynesse/address.py`
+- Sahara and Congo Basin warm the fastest.
 
-3. *Configure your environment*:
-   - Edit `fynesse/defaults.yml` for your data sources
-   - Create `fynesse/machine.yml` for local settings
-   - Add your data files to the project
+- Southern Africa warms more slowly, though still significant.
 
-4. *Start development*:
-   - Write your first test
-   - Implement your data pipeline
-   - Document your analysis process
-
-One challenge for data science and data science processes is that they do not always accommodate the real-time and evolving nature of data science advice as required, for example in pandemic response or in managing an international supply chain. The Fynesse paradigm is inspired by experience in operational data science both in the Amazon supply chain and in the UK Covid-19 pandemic response.
-
+- The last decade (2014–2023) is 0.3–0.6 °C warmer than the 1991–2020 baseline.
+- 
+### Fynesse template
+This miniproject uses the fynesse structure.
 The Fynesse paradigm considers three aspects to data analysis, Access, Assess, Address.
 
 ## Framework Structure
